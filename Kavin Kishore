@@ -1,0 +1,391 @@
+
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <DHT.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <TinyGPSPlus.h>
+#include <LiquidCrystal_I2C.h>
+#include <math.h>
+
+// ========== PIN CONFIGURATION ==========
+#define DHT_PIN       4
+#define DHT_TYPE      DHT22
+
+#define I2C_SDA       21
+#define I2C_SCL       22
+
+#define GPS_RX        16
+#define GPS_TX        17
+
+#define GSM_RX        26
+#define GSM_TX        27
+
+#define SD_CS         5
+#define SD_SCK        18
+#define SD_MISO       19
+#define SD_MOSI       23
+
+#define BUZZER_PIN    25
+#define LED_PIN       2
+
+// ========== CONFIGURABLE LIMITS ==========
+// Example values only. Confirm suitable limits
+// for the specific organ and transport protocol.
+const float TEMP_MIN = 2.0;
+const float TEMP_MAX = 8.0;
+const float HUM_MIN  = 30.0;
+const float HUM_MAX  = 80.0;
+const float SHOCK_LIMIT = 2.0;  // m/s^2 deviation
+const float TILT_LIMIT  = 30.0; // degrees
+
+// Replace with the authorized recipient number
+const char PHONE_NUMBER[] = "+91XXXXXXXXXX";
+
+// ========== OBJECTS ==========
+DHT dht(DHT_PIN, DHT_TYPE);
+Adafruit_MPU6050 mpu;
+TinyGPSPlus gps;
+
+HardwareSerial GPSserial(2);
+HardwareSerial GSMserial(1);
+
+// Change 0x27 to 0x3F if required
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+bool mpuReady = false;
+bool sdReady = false;
+
+unsigned long lastRead = 0;
+unsigned long lastSMS = 0;
+
+const unsigned long READ_INTERVAL = 2000;
+const unsigned long SMS_INTERVAL = 60000;
+
+// ========== GSM SMS FUNCTION ==========
+bool sendSMS(String message) {
+  while (GSMserial.available()) {
+    GSMserial.read();
+  }
+
+  GSMserial.println("AT+CMGF=1");
+  delay(500);
+
+  GSMserial.print("AT+CMGS=\"");
+  GSMserial.print(PHONE_NUMBER);
+  GSMserial.println("\"");
+  delay(1500);
+
+  // Check for the SMS message prompt
+  String response = "";
+  unsigned long start = millis();
+
+  while (millis() - start < 3000) {
+    while (GSMserial.available()) {
+      char c = GSMserial.read();
+      response += c;
+
+      if (c == '>') {
+        GSMserial.print(message);
+        GSMserial.write(26); // Ctrl+Z
+        delay(5000);
+
+        Serial.println("SMS command submitted.");
+        return true;
+      }
+    }
+  }
+
+  Serial.println("GSM did not return SMS prompt.");
+  Serial.println(response);
+  return false;
+}
+
+// ========== GPS LOCATION ==========
+String getLocation() {
+  if (gps.location.isValid() &&
+      gps.location.age() < 10000) {
+    return "Lat:" + String(gps.location.lat(), 6) +
+           " Lon:" + String(gps.location.lng(), 6);
+  }
+
+  return "GPS unavailable";
+}
+
+// ========== SD CARD LOGGING ==========
+void logData(float temp, float hum,
+             float shock, float roll,
+             float pitch, String status) {
+  if (!sdReady) return;
+
+  File file = SD.open("/organ.csv", FILE_APPEND);
+
+  if (file) {
+    file.print(millis());
+    file.print(",");
+
+    if (isnan(temp)) file.print("NA");
+    else file.print(temp, 2);
+    file.print(",");
+
+    if (isnan(hum)) file.print("NA");
+    else file.print(hum, 2);
+    file.print(",");
+
+    file.print(shock, 2);
+    file.print(",");
+    file.print(roll, 2);
+    file.print(",");
+    file.print(pitch, 2);
+    file.print(",");
+    file.print(status);
+    file.print(",");
+
+    // Location is stored in one CSV field
+    file.print("\"");
+    file.print(getLocation());
+    file.println("\"");
+
+    file.close();
+  } else {
+    Serial.println("SD write failed!");
+  }
+}
+
+// ========== SETUP ==========
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+
+  digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(LED_PIN, LOW);
+
+  Wire.begin(I2C_SDA, I2C_SCL);
+
+  dht.begin();
+
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Organ Monitor");
+  lcd.setCursor(0, 1);
+  lcd.print("Initializing...");
+  delay(1500);
+
+  // MPU6050
+  mpuReady = mpu.begin();
+
+  if (mpuReady) {
+    mpu.setAccelerometerRange(
+      MPU6050_RANGE_8_G);
+    mpu.setGyroRange(
+      MPU6050_RANGE_500_DEG);
+    mpu.setFilterBandwidth(
+      MPU6050_BAND_21_HZ);
+    Serial.println("MPU6050 ready.");
+  } else {
+    Serial.println("MPU6050 not detected!");
+  }
+
+  // GPS
+  GPSserial.begin(9600, SERIAL_8N1,
+                  GPS_RX, GPS_TX);
+
+  // GSM
+  GSMserial.begin(9600, SERIAL_8N1,
+                  GSM_RX, GSM_TX);
+  delay(1500);
+  GSMserial.println("AT");
+  delay(500);
+  GSMserial.println("ATE0");
+  delay(500);
+  Serial.println("GSM UART initialized.");
+
+  // microSD
+  SPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
+  sdReady = SD.begin(SD_CS, SPI);
+
+  if (sdReady) {
+    Serial.println("SD card ready.");
+
+    if (!SD.exists("/organ.csv")) {
+      File file = SD.open(
+        "/organ.csv", FILE_WRITE);
+
+      if (file) {
+        file.println(
+          "Time_ms,Temp_C,Humidity,Shock,"
+          "Roll,Pitch,Status,Location");
+        file.close();
+      }
+    }
+  } else {
+    Serial.println("SD card initialization failed!");
+  }
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("System Ready");
+  lcd.setCursor(0, 1);
+  lcd.print("Monitoring...");
+  delay(1500);
+}
+
+// ========== MAIN LOOP ==========
+void loop() {
+  // Process GPS continuously
+  while (GPSserial.available()) {
+    gps.encode(GPSserial.read());
+  }
+
+  if (millis() - lastRead < READ_INTERVAL) {
+    return;
+  }
+
+  lastRead = millis();
+
+  // Read DHT22
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+
+  bool dhtError = isnan(temp) || isnan(hum);
+  bool alert = false;
+
+  String reason = "NORMAL";
+
+  float shock = 0.0;
+  float roll = 0.0;
+  float pitch = 0.0;
+
+  // Temperature and humidity checks
+  if (dhtError) {
+    alert = true;
+    reason = "DHT SENSOR ERROR";
+  } else {
+    if (temp < TEMP_MIN || temp > TEMP_MAX) {
+      alert = true;
+      reason = "TEMP OUT OF RANGE";
+    }
+
+    if (hum < HUM_MIN || hum > HUM_MAX) {
+      alert = true;
+      reason = "HUMIDITY OUT OF RANGE";
+    }
+  }
+
+  // MPU6050 movement and tilt checks
+  if (!mpuReady) {
+    alert = true;
+    reason = "MPU SENSOR ERROR";
+  } else {
+    sensors_event_t a, g, t;
+    mpu.getEvent(&a, &g, &t);
+
+    float ax = a.acceleration.x;
+    float ay = a.acceleration.y;
+    float az = a.acceleration.z;
+
+    float magnitude =
+      sqrt(ax * ax + ay * ay + az * az);
+
+    // Simple deviation-from-gravity indicator;
+    // not a calibrated impact measurement.
+    shock = fabs(magnitude - 9.81);
+
+    roll = atan2(ay, az) * 180.0 / PI;
+    pitch = atan2(
+      -ax, sqrt(ay * ay + az * az)
+    ) * 180.0 / PI;
+
+    if (shock > SHOCK_LIMIT) {
+      alert = true;
+      reason = "SHOCK DETECTED";
+    }
+
+    if (fabs(roll) > TILT_LIMIT ||
+        fabs(pitch) > TILT_LIMIT) {
+      alert = true;
+      reason = "EXCESSIVE TILT";
+    }
+  }
+
+  // Serial Monitor
+  Serial.println("\n--- ORGAN TRANSPORT ---");
+
+  if (!dhtError) {
+    Serial.printf("Temperature: %.1f C\n", temp);
+    Serial.printf("Humidity: %.1f %%\n", hum);
+  } else {
+    Serial.println("DHT22 reading error!");
+  }
+
+  Serial.printf("Shock indicator: %.2f m/s^2\n", shock);
+  Serial.printf("Roll: %.1f deg\n", roll);
+  Serial.printf("Pitch: %.1f deg\n", pitch);
+
+  Serial.print("GPS: ");
+  Serial.println(getLocation());
+
+  Serial.print("Status: ");
+  Serial.println(reason);
+
+  // LCD display
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+
+  if (dhtError) {
+    lcd.print("DHT22 ERROR");
+  } else {
+    lcd.print("T:");
+    lcd.print(temp, 1);
+    lcd.print("C H:");
+    lcd.print(hum, 0);
+    lcd.print("%");
+  }
+
+  lcd.setCursor(0, 1);
+
+  if (alert) {
+    lcd.print("ALERT:");
+    lcd.print(reason.substring(0, 10));
+  } else {
+    lcd.print("Checks normal");
+  }
+
+  // Local warning
+  digitalWrite(BUZZER_PIN, alert ? HIGH : LOW);
+  digitalWrite(LED_PIN, alert ? HIGH : LOW);
+
+  // Save measurements
+  logData(temp, hum, shock, roll, pitch, reason);
+
+  // Send SMS on alert, with cooldown
+  if (alert &&
+      (lastSMS == 0 ||
+       millis() - lastSMS >= SMS_INTERVAL)) {
+
+    String message = "ORGAN TRANSPORT ALERT: ";
+    message += reason;
+    message += ". ";
+
+    if (!dhtError) {
+      message += "T=" + String(temp, 1);
+      message += "C RH=" + String(hum, 1);
+      message += "%. ";
+    }
+
+    message += getLocation();
+
+    Serial.println("Attempting GSM SMS...");
+
+    if (sendSMS(message)) {
+      lastSMS = millis();
+    } else {
+      Serial.println("SMS prompt failed; retry next cycle.");
+    }
+  }
+}
