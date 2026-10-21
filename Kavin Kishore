@@ -41,7 +41,7 @@ const float SHOCK_LIMIT = 2.0;  // m/s^2 deviation
 const float TILT_LIMIT  = 30.0; // degrees
 
 // Replace with the authorized recipient number
-const char PHONE_NUMBER[] = "+91XXXXXXXXXX";
+const char PHONE_NUMBER[] = "+919597949215";
 
 // ========== OBJECTS ==========
 DHT dht(DHT_PIN, DHT_TYPE);
