@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Organ Transit Monitor</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap">
+<style>
+:root{color-scheme:dark;--bg:#060a18;--sf:#0d1330;--sf2:#121a3e;--ink:#f4f6ff;--mu:#9aa6d4;--ln:#232e66;--a:#2de2c5;--b:#8b7bff;--c:#ff5d8f;--ok:#2de2c5;--wn:#ffc14d;--bd:#ff5d8f;--g1:rgba(139,123,255,.22);--g2:rgba(45,226,197,.16);--dot:rgba(190,205,255,.85);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ff;--sf:#fff;--sf2:#eef0ff;--ink:#0a1030;--mu:#4a5590;--ln:#c9d0f2;--a:#008a77;--b:#4b3fd6;--c:#d1124f;--ok:#008a77;--wn:#9a6200;--bd:#d1124f;--g1:rgba(75,63,214,.14);--g2:rgba(0,138,119,.12);--dot:rgba(40,55,130,.75)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Outfit,system-ui,sans-serif;line-height:1.5;min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;position:relative;z-index:5}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem}
+.logo svg{width:26px;height:26px;fill:var(--c);animation:beat 1.4s infinite}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.22)}30%{transform:scale(1)}45%{transform:scale(1.12)}}
+.tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--ln);border-radius:99px;background:var(--sf)}
+.tabs button{border:0;background:none;color:var(--mu);font:inherit;font-weight:600;padding:8px 18px;border-radius:99px;cursor:pointer;min-height:40px;transition:.25s}
+.tabs button.on{background:linear-gradient(90deg,var(--b),var(--a));color:#04081a}
+button:focus-visible,select:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+.view{display:none}.view.on{display:block;animation:fade .6s ease}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* intro */
+.hero{position:relative;min-height:calc(100vh - 70px);overflow:hidden;display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:center;padding:20px 28px 40px;max-width:1180px;margin:0 auto}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;background:radial-gradient(800px 500px at 80% 20%,var(--g1),transparent 65%),radial-gradient(700px 500px at 10% 90%,var(--g2),transparent 65%)}
+.hero>*{position:relative;z-index:1}
+.kicker{display:inline-block;border:1px solid var(--ln);background:var(--sf);border-radius:99px;padding:5px 14px;font-size:.85rem;color:var(--a);margin-bottom:18px}
+h1{font-size:clamp(2.2rem,5.2vw,4rem);line-height:1.05;margin:0 0 16px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(100deg,var(--ink) 30%,var(--a) 65%,var(--b));-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;animation:shine 6s linear infinite}
+@keyframes shine{to{background-position:-200% 0}}
+.lead{color:var(--mu);font-size:1.1rem;max-width:520px;margin:0 0 24px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:600;border-radius:12px;padding:13px 24px;cursor:pointer;border:1px solid var(--ln);background:var(--sf);color:var(--ink);min-height:46px;transition:.25s}
+.btn:hover{transform:translateY(-2px);border-color:var(--a)}
+.btn.pri{background:linear-gradient(90deg,var(--b),var(--a));border:0;color:#04081a;box-shadow:0 0 28px var(--g1)}
+.ecg{margin-top:30px;max-width:520px;height:60px;border-bottom:1px solid var(--ln)}
+.ecg svg{width:100%;height:60px}
+.ecg path{fill:none;stroke:var(--a);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1000;stroke-dashoffset:1000;animation:draw 3.2s linear infinite;filter:drop-shadow(0 0 5px var(--a))}
+@keyframes draw{to{stroke-dashoffset:0}}
+.orb{position:relative;width:min(380px,80vw);aspect-ratio:1;margin:0 auto;perspective:900px}
+.orb .core{position:absolute;inset:34%;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,var(--sf2),var(--bg));box-shadow:0 0 60px var(--g1),0 0 120px var(--g2),inset 0 0 20px var(--g1)}
+.orb .core svg{width:52%;fill:var(--c);filter:drop-shadow(0 0 12px var(--c));animation:beat 1.4s infinite}
+.orb .rg{position:absolute;inset:0;border-radius:50%;border:1.5px dashed var(--b);transform-style:preserve-3d;animation:spin 14s linear infinite}
+.orb .rg::after{content:"";position:absolute;top:-6px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--a);box-shadow:0 0 14px var(--a)}
+.orb .r2{inset:9%;border-color:var(--a);border-style:solid;animation-duration:9s;animation-direction:reverse}
+.orb .r2::after{background:var(--c);box-shadow:0 0 14px var(--c)}
+.orb .r3{inset:-8%;border-color:var(--ln);animation-duration:22s}
+.orb .r3::after{background:var(--b);box-shadow:0 0 14px var(--b)}
+@keyframes spin{from{transform:rotateX(68deg) rotateZ(0)}to{transform:rotateX(68deg) rotateZ(360deg)}}
+.orb .r2{animation-name:spin2}
+@keyframes spin2{from{transform:rotateX(68deg) rotateY(25deg) rotateZ(0)}to{transform:rotateX(68deg) rotateY(25deg) rotateZ(-360deg)}}
+.chips{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.chip{border:1px solid var(--ln);border-radius:16px;padding:16px 18px;background:linear-gradient(160deg,var(--sf2),var(--sf));transition:.3s}
+.chip:hover{transform:translateY(-4px);border-color:var(--a);box-shadow:0 10px 30px var(--g2)}
+.chip b{display:block;font-size:1.5rem;color:var(--a)}
+.chip span{color:var(--mu);font-size:.92rem}
+.flow{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;margin-top:6px}
+.flow::before{content:"";position:absolute;left:12%;right:12%;top:24px;height:2px;background:var(--ln)}
+.flow::after{content:"";position:absolute;left:12%;top:20px;width:10px;height:10px;border-radius:50%;background:var(--a);box-shadow:0 0 14px var(--a);animation:travel 4s ease-in-out infinite}
+@keyframes travel{0%{left:12%}100%{left:calc(88% - 10px)}}
+.step{text-align:center;padding:0 8px;position:relative}
+.step i{display:grid;place-items:center;width:48px;height:48px;margin:0 auto 10px;border-radius:50%;background:var(--sf);border:2px solid var(--b);font-style:normal;font-weight:800;z-index:1;position:relative}
+.step b{display:block}
+.step span{color:var(--mu);font-size:.88rem}
+
+/* monitor */
+.mon{max-width:1100px;margin:0 auto;padding:6px 20px 30px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px;border:1px solid var(--ln);border-radius:16px;background:var(--sf);margin-bottom:14px}
+.bar .sp{flex:1}
+select,.sbtn{font:inherit;font-size:.9rem;font-weight:600;padding:9px 14px;border-radius:10px;border:1px solid var(--ln);background:var(--sf2);color:var(--ink);cursor:pointer;min-height:42px;transition:.2s}
+.sbtn:hover{border-color:var(--a);box-shadow:0 0 14px var(--g2)}
+.sbtn.pri{background:linear-gradient(90deg,var(--b),var(--a));border:0;color:#04081a}
+.sbtn:disabled{opacity:.5}
+.live{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:.88rem;color:var(--mu)}
+.live i{width:10px;height:10px;border-radius:50%;background:var(--mu)}
+.live.on{color:var(--ok)}.live.on i{background:var(--ok);animation:ping 1.4s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 var(--ok)}100%{box-shadow:0 0 0 12px transparent}}
+.row{display:grid;grid-template-columns:1.1fr 2fr;gap:14px;margin-bottom:14px}
+.card{border:1px solid var(--ln);border-radius:18px;padding:18px;background:linear-gradient(160deg,var(--sf2),var(--sf));position:relative;overflow:hidden;margin-bottom:14px}
+.row .card{margin-bottom:0}
+.card.flash::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:18px;animation:fl .9s ease-out;box-shadow:inset 0 0 0 2px var(--fc),inset 0 0 40px var(--fc)}
+@keyframes fl{from{opacity:1}to{opacity:0}}
+h2{font-size:.92rem;margin:0 0 10px;font-weight:600;color:var(--mu)}
+.ring{width:150px;height:150px;margin:0 auto 8px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.arc{transition:stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1),stroke .4s;filter:drop-shadow(0 0 6px currentColor)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;align-content:center;font-size:2.4rem;font-weight:800}
+.ring b small{font-size:.72rem;font-weight:400;color:var(--mu);margin-top:-6px}
+.vd{text-align:center}.vd strong{display:block;font-size:1.2rem}.vd span{color:var(--mu);font-size:.85rem}
+.gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.gg{text-align:center;border:1px solid var(--ln);border-radius:14px;padding:12px 6px;transition:.3s;background:var(--bg)}
+.gg svg{width:100%;max-width:150px}
+.gg .tr{fill:none;stroke:var(--ln);stroke-width:9;stroke-linecap:round}
+.gg .fg{fill:none;stroke:currentColor;stroke-width:9;stroke-linecap:round;stroke-dasharray:157.1;transition:stroke-dashoffset .4s,stroke .3s;filter:drop-shadow(0 0 5px currentColor)}
+.gg strong{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums;margin-top:-26px;position:relative}
+.gg span{font-size:.8rem;color:var(--mu)}
+.gg.wn{border-color:var(--wn)}.gg.bd{border-color:var(--bd);box-shadow:0 0 18px var(--bd)}
+.ok{color:var(--ok)}.wn{color:var(--wn)}.bd{color:var(--bd)}
+.mini{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.mini div{border:1px solid var(--ln);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.mini span{display:block;font-size:.78rem;color:var(--mu)}
+.mini strong{font-size:1.25rem;font-variant-numeric:tabular-nums}
+.route{position:relative;height:72px;margin:8px 10px 0}
+.route .line{position:absolute;left:0;right:0;top:32px;height:4px;background:var(--ln);border-radius:2px}
+.route .done{position:absolute;left:0;top:32px;height:4px;background:linear-gradient(90deg,var(--b),var(--a));border-radius:2px;box-shadow:0 0 12px var(--a);transition:width .25s linear}
+.route .pin{position:absolute;top:22px;width:24px;height:24px;margin-left:-12px;border-radius:50%;background:var(--a);border:4px solid var(--bg);transition:left .25s linear}
+.route .pin::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid var(--a);animation:rp 1.8s ease-out infinite}
+@keyframes rp{from{transform:scale(.6);opacity:1}to{transform:scale(1.6);opacity:0}}
+.route .tick{position:absolute;top:24px;width:4px;height:20px;margin-left:-2px;border-radius:2px;animation:pop .4s}
+@keyframes pop{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.route .lb{position:absolute;top:52px;font-size:.78rem;color:var(--mu)}
+.sub{color:var(--mu);font-size:.85rem}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cv{position:relative}.cv canvas{width:100%;height:160px;display:block}
+.cv::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-60px;background:linear-gradient(90deg,transparent,var(--g1),transparent);animation:scan 3.5s linear infinite;pointer-events:none}
+@keyframes scan{to{left:100%}}
+ul{list-style:none;margin:0;padding:0;max-height:220px;overflow-y:auto}
+li{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--ln);font-size:.92rem;animation:sl .4s}
+@keyframes sl{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+li time{color:var(--mu);min-width:52px;font-variant-numeric:tabular-nums}
+.empty{color:var(--mu)}
+@media (max-width:820px){.hero{grid-template-columns:1fr;text-align:center;padding-top:6px}.lead,.ecg{margin-left:auto;margin-right:auto}.cta{justify-content:center}.row,.cols{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr;gap:22px 0}.flow::before,.flow::after{display:none}}
+@media (max-width:520px){.gauges{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<nav>
+  <div class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.4 2.8 4.5 6.5 4.5c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3 3.7 0 5.6 3.9 4.1 7.2C19.5 16.4 12 21 12 21z"/></svg>Organ Transit Monitor</div>
+  <div class="tabs" role="tablist">
+    <button id="tIntro" class="on" role="tab">Introduction</button>
+    <button id="tMon" role="tab">Live monitor</button>
+  </div>
+</nav>
+
+<section class="view on" id="intro">
+  <div class="hero">
+    <div>
+      <span class="kicker">Smart organ transportation system</span>
+      <h1>Every minute counts. Every bump is recorded.</h1>
+      <p class="lead">A connected monitoring box that tracks temperature, shock, tilt and location of a donor organ on its way between hospitals, and warns the surgical team the moment its condition is at risk.</p>
+      <div class="cta">
+        <button class="btn pri" id="open">Open live monitor</button>
+        <button class="btn" id="how">See how it works</button>
+      </div>
+      <div class="ecg"><svg viewBox="0 0 520 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 32H120L134 32 146 8 160 54 172 32H300L312 32 322 16 332 32H520"/></svg></div>
+    </div>
+    <div class="orb" aria-hidden="true">
+      <div class="rg r3"></div><div class="rg"></div><div class="rg r2"></div>
+      <div class="core"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.4 2.8 4.5 6.5 4.5c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3 3.7 0 5.6 3.9 4.1 7.2C19.5 16.4 12 21 12 21z"/></svg></div>
+    </div>
+    <div class="chips">
+      <div class="chip"><b>2 to 8 °C</b><span>Cold chain kept in range</span></div>
+      <div class="chip"><b>Shock in g</b><span>Bumps and drops logged</span></div>
+      <div class="chip"><b>Tilt angle</b><span>Orientation of the box</span></div>
+      <div class="chip"><b>Live route</b><span>GPS progress and arrival time</span></div>
+    </div>
+    <div class="flow" id="flow">
+      <div class="step"><i>1</i><b>Sense</b><span>Sensors inside the box</span></div>
+      <div class="step"><i>2</i><b>Transmit</b><span>Wireless link to the app</span></div>
+      <div class="step"><i>3</i><b>Assess</b><span>Integrity index from events</span></div>
+      <div class="step"><i>4</i><b>Alert</b><span>Surgeons are warned early</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="view" id="monitor">
+  <div class="mon">
+    <div class="bar">
+      <button class="sbtn pri" id="go">Start trip</button>
+      <select id="spd" aria-label="Speed"><option value="1">Real time</option><option value="60" selected>60× faster</option><option value="240">240× faster</option></select>
+      <button class="sbtn" id="bump">Hit a pothole</button>
+      <button class="sbtn" id="heat">Cooling fails</button>
+      <button class="sbtn" id="tilt">Box tips over</button>
+      <button class="sbtn" id="rst">Reset</button>
+      <span class="sp"></span>
+      <span class="live" id="live"><i></i><span id="liveT">Standby</span></span>
+      <select id="organ" aria-label="Organ"><option value="4">Heart (4 h)</option><option value="6">Lung (6 h)</option><option value="12" selected>Liver (12 h)</option><option value="12">Pancreas (12 h)</option><option value="24">Kidney (24 h)</option></select>
+    </div>
+
+    <div class="row">
+      <div class="card" id="pStatus" aria-live="polite">
+        <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--ln)" stroke-width="8"/><circle class="arc" id="arc" cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg><b id="score">100<small>integrity</small></b></div>
+        <div class="vd"><strong id="verdict">Ready to start</strong><span id="why">Drops with every temperature, shock or tilt event.</span></div>
+      </div>
+      <div class="card">
+        <div class="gauges">
+          <div class="gg" id="gT"><svg viewBox="0 0 120 70"><path class="tr" d="M10 60A50 50 0 0 1 110 60"/><path class="fg" id="fT" d="M10 60A50 50 0 0 1 110 60"/></svg><strong id="vT">4.0 °C</strong><span>Temperature, safe 2 to 8</span></div>
+          <div class="gg" id="gS"><svg viewBox="0 0 120 70"><path class="tr" d="M10 60A50 50 0 0 1 110 60"/><path class="fg" id="fS" d="M10 60A50 50 0 0 1 110 60"/></svg><strong id="vS">0.0 g</strong><span>Shock, warn above 2</span></div>
+          <div class="gg" id="gL"><svg viewBox="0 0 120 70"><path class="tr" d="M10 60A50 50 0 0 1 110 60"/><path class="fg" id="fL" d="M10 60A50 50 0 0 1 110 60"/></svg><strong id="vL">0°</strong><span>Tilt, warn above 30</span></div>
+        </div>
+        <div class="mini">
+          <div><span>Cold ischemia time</span><strong id="vC">0:00</strong> <span style="display:inline" id="vCl">of 12:00</span></div>
+          <div><span>Sensor battery</span><strong id="vB">100%</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card"><h2>Route</h2>
+      <div class="route" id="route"><div class="line"></div><div class="done" id="done"></div><div class="pin" id="pin"></div><div class="lb" style="left:0">Hospital A</div><div class="lb" style="right:0">Hospital B</div></div>
+      <div class="sub" id="eta">Distance 0 of 180 km</div>
+    </div>
+    <div class="cols">
+      <div class="card"><h2>Temperature (°C)</h2><div class="cv"><canvas id="cT" aria-label="Temperature over time"></canvas></div></div>
+      <div class="card"><h2>Shock (g)</h2><div class="cv"><canvas id="cS" aria-label="Shock over time"></canvas></div></div>
+    </div>
+    <div class="card"><h2>Event log</h2><ul id="log"><li class="empty">No events yet. Start the trip to begin recording.</li></ul></div>
+  </div>
+</section>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var css=function(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()};
+var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- navigation ---------- */
+var view='intro';
+function show(v){
+  view=v;
+  $('intro').className='view'+(v==='intro'?' on':'');
+  $('monitor').className='view'+(v==='monitor'?' on':'');
+  $('tIntro').className=v==='intro'?'on':'';$('tMon').className=v==='monitor'?'on':'';
+  $('bg').style.display=v==='intro'?'block':'none';
+  try{history.replaceState(null,'','#'+v)}catch(e){}
+  window.scrollTo(0,0);
+  if(v==='monitor')render();
+}
+$('tIntro').onclick=function(){show('intro')};
+$('tMon').onclick=function(){show('monitor')};
+$('open').onclick=function(){show('monitor')};
+$('how').onclick=function(){$('flow').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'})};
+
+/* ---------- intro background: drifting network ---------- */
+var bg=$('bg'),bc=bg.getContext('2d'),pts=[],W,H;
+function size(){var d=window.devicePixelRatio||1;W=bg.clientWidth;H=bg.clientHeight;bg.width=W*d;bg.height=H*d;bc.setTransform(d,0,0,d,0,0);
+  var n=Math.min(90,Math.round(W*H/16000));pts=[];for(var i=0;i<n;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35})}
+function loop(){
+  if(view==='intro'){
+    bc.clearRect(0,0,W,H);var dot=css('--dot'),a=css('--a');
+    for(var i=0;i<pts.length;i++){var p=pts[i];p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      bc.fillStyle=dot;bc.globalAlpha=.7;bc.beginPath();bc.arc(p.x,p.y,1.6,0,7);bc.fill();
+      for(var j=i+1;j<pts.length;j++){var q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<130){bc.globalAlpha=(1-d/130)*.35;bc.strokeStyle=a;bc.lineWidth=1;bc.beginPath();bc.moveTo(p.x,p.y);bc.lineTo(q.x,q.y);bc.stroke()}}}
+    bc.globalAlpha=1;
+  }
+  if(!reduce)requestAnimationFrame(loop);
+}
+size();loop();
+window.addEventListener('resize',function(){size();if(view==='monitor')render()});
+
+/* ---------- monitor simulation ---------- */
+var DIST=180,KMH=60,S,timer;
+function fresh(){return{t:0,run:false,T:4,sh:0,tl:0,bat:100,score:100,km:0,heat:0,tip:0,hT:[],hS:[],ev:[],lastBump:-99}}
+S=fresh();
+function fmt(s){var m=Math.floor(s/60);return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
+function rnd(a,b){return a+Math.random()*(b-a)}
+function flash(sev){var p=$('pStatus');p.style.setProperty('--fc','var(--'+sev+')');p.classList.remove('flash');void p.offsetWidth;p.classList.add('flash')}
+function addEvent(msg,sev,pen){
+  S.score=Math.max(0,S.score-pen);S.ev.push({km:S.km,sev:sev});
+  var ul=$('log');if(ul.firstChild&&ul.firstChild.className==='empty')ul.innerHTML='';
+  var li=document.createElement('li'),tm=document.createElement('time'),tx=document.createElement('span');
+  tm.textContent=fmt(S.t);tx.textContent=msg;tx.className=sev;li.appendChild(tm);li.appendChild(tx);ul.insertBefore(li,ul.firstChild);
+  if(sev!=='ok')flash(sev);
+}
+function tick(){
+  var dt=0.25*parseFloat($('spd').value);
+  S.t+=dt;S.km=Math.min(DIST,S.km+KMH*dt/3600);
+  var target=S.heat>0?12:4;S.heat=Math.max(0,S.heat-dt);
+  S.T+=(target-S.T)*Math.min(1,dt/900)+rnd(-.02,.02);
+  var base=rnd(.05,.35);if(Math.random()<dt/600)base=rnd(1.2,3.2);if(S.bump){base=S.bump;S.bump=0}
+  S.sh=base;
+  if(S.tip>0){S.tl=rnd(48,62);S.tip-=dt}else S.tl+=(rnd(0,6)-S.tl)*.5;
+  S.bat=Math.max(0,100-S.t/3600*2.2);
+  if(S.sh>=5&&S.t-S.lastBump>20){S.lastBump=S.t;addEvent('Severe shock '+S.sh.toFixed(1)+' g at '+S.km.toFixed(0)+' km','bd',18)}
+  else if(S.sh>=2&&S.t-S.lastBump>20){S.lastBump=S.t;addEvent('Shock '+S.sh.toFixed(1)+' g at '+S.km.toFixed(0)+' km','wn',6)}
+  var outT=S.T>8||S.T<2;if(outT&&!S.outT)addEvent('Temperature out of range: '+S.T.toFixed(1)+' °C','bd',15);S.outT=outT;
+  if(outT)S.score=Math.max(0,S.score-dt*0.004);
+  var tp=S.tl>30;if(tp&&!S.tipped)addEvent('Box tilted '+S.tl.toFixed(0)+'°','wn',10);S.tipped=tp;
+  if(S.bat<20&&!S.lowB){S.lowB=1;addEvent('Sensor battery below 20%','wn',0)}
+  S.hT.push(S.T);S.hS.push(S.sh);if(S.hT.length>140){S.hT.shift();S.hS.shift()}
+  render();
+  if(S.km>=DIST){S.run=false;clearInterval(timer);$('go').textContent='Trip complete';$('go').disabled=true;addEvent('Arrived at Hospital B after '+fmt(S.t),'ok',0);render()}
+}
+function chart(cv,data,min,max,band,thr,col){
+  var d=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;if(!w)return;
+  cv.width=w*d;cv.height=h*d;var c=cv.getContext('2d');c.scale(d,d);
+  function y(v){return h-8-(v-min)/(max-min)*(h-16)}
+  c.strokeStyle=css('--ln');c.lineWidth=1;for(var g=1;g<4;g++){c.beginPath();c.moveTo(0,h*g/4);c.lineTo(w,h*g/4);c.stroke()}
+  if(band){c.fillStyle=css('--g2');c.fillRect(0,y(band[1]),w,y(band[0])-y(band[1]))}
+  if(thr!=null){c.strokeStyle=css('--wn');c.setLineDash([5,4]);c.beginPath();c.moveTo(0,y(thr));c.lineTo(w,y(thr));c.stroke();c.setLineDash([])}
+  if(data.length<2)return;
+  c.beginPath();data.forEach(function(v,i){var x=i/139*w;i?c.lineTo(x,y(v)):c.moveTo(x,y(v))});
+  var lx=(data.length-1)/139*w;
+  c.save();c.shadowColor=col;c.shadowBlur=10;c.strokeStyle=col;c.lineWidth=2.2;c.stroke();c.restore();
+  c.lineTo(lx,h);c.lineTo(0,h);c.closePath();var gr=c.createLinearGradient(0,0,0,h);gr.addColorStop(0,col);gr.addColorStop(1,'transparent');
+  c.globalAlpha=.22;c.fillStyle=gr;c.fill();c.globalAlpha=1;
+  c.fillStyle=col;c.beginPath();c.arc(lx,y(data[data.length-1]),4,0,7);c.fill();
+}
+function gauge(id,gid,v,min,max,k){
+  var f=Math.max(0,Math.min(1,(v-min)/(max-min)));
+  $(id).style.strokeDashoffset=(157.1*(1-f)).toFixed(1);
+  $(id).parentNode.parentNode.className='gg '+k;$(id).parentNode.parentNode.style.color='var(--'+(k||'ok')+')';
+}
+function render(){
+  if(view!=='monitor')return;
+  var s=Math.round(S.score),lim=parseFloat($('organ').value),k=s>=80?'ok':s>=50?'wn':'bd',over=S.t>lim*3600;
+  $('score').firstChild.nodeValue=s;$('score').className=k;$('pStatus').querySelector('.ring').style.color='var(--'+k+')';
+  $('arc').style.strokeDashoffset=(326.7*(1-s/100)).toFixed(1);
+  var v=!S.t?['Ready to start','Drops with every temperature, shock or tilt event.']:
+    over?['Viability window exceeded','Cold ischemia time passed the limit. Contact the transplant team.']:
+    s>=80?['Organ condition good','No serious events. Monitoring continues.']:
+    s>=50?['Review recommended','Stress events recorded. Check the log before surgery.']:
+    ['Integrity at risk','Serious stress events recorded. Alert the receiving surgeon.'];
+  $('verdict').textContent=v[0];$('verdict').className=over?'bd':k;$('why').textContent=v[1];
+  $('live').className='live'+(S.run?' on':'');$('liveT').textContent=S.run?'Live':(S.km>=DIST?'Delivered':S.t?'Paused':'Standby');
+  var tk=(S.T>8||S.T<2)?'bd':'ok',sk=S.sh>=5?'bd':S.sh>=2?'wn':'ok',lk=S.tl>30?'wn':'ok';
+  $('vT').textContent=S.T.toFixed(1)+' °C';$('vS').textContent=S.sh.toFixed(1)+' g';$('vL').textContent=Math.round(S.tl)+'°';
+  gauge('fT','gT',S.T,0,16,tk);gauge('fS','gS',S.sh,0,6,sk);gauge('fL','gL',S.tl,0,90,lk);
+  $('vC').textContent=fmt(S.t);$('vC').className=over?'bd':'';$('vCl').textContent='of '+lim+':00';
+  $('vB').textContent=Math.round(S.bat)+'%';$('vB').className=S.bat<20?'wn':'';
+  var p=S.km/DIST*100;$('pin').style.left=p+'%';$('done').style.width=p+'%';$('eta').textContent='Distance '+S.km.toFixed(0)+' of '+DIST+' km';
+  var r=$('route'),bad=S.ev.filter(function(e){return e.sev!=='ok'});
+  if(r.querySelectorAll('.tick').length!==bad.length){[].slice.call(r.querySelectorAll('.tick')).forEach(function(x){x.remove()});
+    bad.forEach(function(e){var d=document.createElement('div');d.className='tick';d.style.left=(e.km/DIST*100)+'%';d.style.background='var(--'+e.sev+')';r.appendChild(d)})}
+  chart($('cT'),S.hT,0,16,[2,8],null,css('--a'));chart($('cS'),S.hS,0,6,null,2,css('--b'));
+}
+$('go').onclick=function(){
+  if(S.run){S.run=false;clearInterval(timer);this.textContent='Resume trip';render();return}
+  S.run=true;this.textContent='Pause trip';timer=setInterval(tick,250);render();
+};
+$('bump').onclick=function(){S.bump=rnd(5.2,7)};
+$('heat').onclick=function(){S.heat=1800};
+$('tilt').onclick=function(){S.tip=60};
+$('rst').onclick=function(){clearInterval(timer);S=fresh();$('go').disabled=false;$('go').textContent='Start trip';
+  $('log').innerHTML='<li class="empty">No events yet. Start the trip to begin recording.</li>';render()};
+$('organ').onchange=render;
+show(location.hash==='#monitor'?'monitor':'intro');
+})();
+</script>
+</body>
+</html>
