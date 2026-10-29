@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organ Transit Monitoring System</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f1f5f9;
+  color: #172033;
+}
+
+header {
+  background: #10243a;
+  color: white;
+  padding: 24px;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0 0 10px;
+}
+
+header p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 25px auto;
+  padding: 0 16px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.badge {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 9px 13px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 3px 12px #0000000b;
+  border: 1px solid #e2e8f0;
+}
+
+.label {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.value {
+  font-size: 30px;
+  font-weight: bold;
+  margin: 14px 0;
+}
+
+.status {
+  color: #15803d;
+  font-weight: bold;
+}
+
+.panel {
+  margin-top: 20px;
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #0f766e;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 8px 8px 0 0;
+}
+
+footer {
+  text-align: center;
+  color: #64748b;
+  padding: 25px;
+  font-size: 13px;
+}
+
+@media (max-width: 500px) {
+  header h1 {
+    font-size: 22px;
+  }
+  .value {
+    font-size: 26px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Organ Transit Monitoring System</h1>
+  <p>ESP32-Based Smart Organ Transportation Monitoring</p>
+</header>
+
+<main class="container">
+
+  <div class="topbar">
+    <div>
+      <h2>Live Monitoring Dashboard</h2>
+      <p id="mode">DEMO MODE — Simulated readings</p>
+    </div>
+    <span class="badge" id="connection">● DEMO ACTIVE</span>
+  </div>
+
+  <section class="grid">
+
+    <article class="card">
+      <div class="label">Temperature</div>
+      <div class="value"><span id="temp">4.0</span> °C</div>
+      <div class="status" id="tempStatus">Demo reading</div>
+    </article>
+
+    <article class="card">
+      <div class="label">Humidity</div>
+      <div class="value"><span id="humidity">60</span> %</div>
+      <div class="status">DHT22 parameter</div>
+    </article>
+
+    <article class="card">
+      <div class="label">Roll Angle</div>
+      <div class="value"><span id="roll">2.0</span> °</div>
+      <div class="status">MPU6050 parameter</div>
+    </article>
+
+    <article class="card">
+      <div class="label">Pitch Angle</div>
+      <div class="value"><span id="pitch">-1.0</span> °</div>
+      <div class="status">MPU6050 parameter</div>
+    </article>
+
+    <article class="card">
+      <div class="label">GPS Latitude</div>
+      <div class="value" style="font-size:22px" id="latitude">11.0168</div>
+    </article>
+
+    <article class="card">
+      <div class="label">GPS Longitude</div>
+      <div class="value" style="font-size:22px" id="longitude">76.9558</div>
+    </article>
+
+  </section>
+
+  <section class="panel">
+    <h3>Transport Monitoring Status</h3>
+    <div class="value" style="font-size:23px" id="overall">
+      DEMO — Monitoring
+    </div>
+    <p id="updated">Waiting for update...</p>
+    <p id="notice">
+      These are simulated readings, not actual organ or sensor measurements.
+    </p>
+    <button id="pauseButton">Pause Demo</button>
+  </section>
+
+</main>
+
+<footer>
+  Organ Transit Monitoring System | Academic Prototype
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let paused = false;
+
+let readings = {
+  temp: 4.0,
+  humidity: 60,
+  roll: 2.0,
+  pitch: -1.0,
+  latitude: 11.0168,
+  longitude: 76.9558
+};
+
+function updateDashboard() {
+  if (paused) return;
+
+  readings.temp = Math.max(
+    2, Math.min(8, readings.temp + (Math.random() - 0.5) * 0.5)
+  );
+
+  readings.humidity = Math.max(
+    35, Math.min(75, readings.humidity + (Math.random() - 0.5) * 3)
+  );
+
+  readings.roll = Math.max(
+    -30, Math.min(30, readings.roll + (Math.random() - 0.5) * 4)
+  );
+
+  readings.pitch = Math.max(
+    -30, Math.min(30, readings.pitch + (Math.random() - 0.5) * 4)
+  );
+
+  readings.latitude += (Math.random() - 0.5) * 0.0001;
+  readings.longitude += (Math.random() - 0.5) * 0.0001;
+
+  $("temp").textContent = readings.temp.toFixed(1);
+  $("humidity").textContent = readings.humidity.toFixed(1);
+  $("roll").textContent = readings.roll.toFixed(1);
+  $("pitch").textContent = readings.pitch.toFixed(1);
+  $("latitude").textContent = readings.latitude.toFixed(6);
+  $("longitude").textContent = readings.longitude.toFixed(6);
+
+  const alert = readings.temp < 2 || readings.temp > 8;
+
+  $("tempStatus").textContent = alert
+    ? "Temperature outside configured range"
+    : "Within configured range";
+
+  $("tempStatus").style.color = alert ? "#dc2626" : "#15803d";
+
+  $("overall").textContent = alert
+    ? "DEMO ALERT — Temperature"
+    : "DEMO — Monitoring";
+
+  $("overall").style.color = alert ? "#dc2626" : "#15803d";
+
+  $("updated").textContent =
+    "Last demo update: " + new Date().toLocaleTimeString();
+}
+
+$("pauseButton").addEventListener("click", function() {
+  paused = !paused;
+  this.textContent = paused ? "Resume Demo" : "Pause Demo";
+
+  if (!paused) {
+    updateDashboard();
+  }
+});
+
+updateDashboard();
+setInterval(updateDashboard, 2000);
+</script>
+
+</body>
+</html>
